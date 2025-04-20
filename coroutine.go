@@ -15,7 +15,7 @@ func (c *Coroutine) Switch() {
 	}
 }
 
-func NewCoro(f func(*Coroutine)) *Coroutine {
+func NewCoroutine(f func(*Coroutine)) *Coroutine {
 	next, _ := iter.Pull(func(yield func(struct{}) bool) {
 		f(&Coroutine{
 			yield: yield,
