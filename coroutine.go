@@ -2,24 +2,7 @@ package zu
 
 import (
 	"iter"
-	"sync"
 )
-
-var _coroutine_pool sync.Pool = sync.Pool{
-	New: func() interface{} {
-		return &Coroutine{}
-	},
-}
-
-func _acquire_coroutine() *Coroutine {
-	return _coroutine_pool.Get().(*Coroutine)
-}
-
-func _release_coroutine(c *Coroutine) {
-	c.next = nil
-	c.yield = nil
-	c.Release()
-}
 
 type Coroutine struct {
 	next  func() (struct{}, bool)
@@ -28,18 +11,11 @@ type Coroutine struct {
 
 // Switch switches the control between the coroutine and the caller.
 // If the coroutine is paused, it will resume execution.
-func (c *Coroutine) Switch() {
+func (c Coroutine) Switch() {
 	if c.next != nil {
 		c.next()
 	} else {
 		c.yield(struct{}{})
-	}
-}
-
-// Release releases the coroutine object back to the pool.
-func (c *Coroutine) Release() {
-	if c != nil && (c.next != nil || c.yield != nil) { // prevent double release
-		_release_coroutine(c)
 	}
 }
 
@@ -59,17 +35,18 @@ func (c *Coroutine) Release() {
 //	})
 //
 //	c.Switch() // This will start the coroutine
-func NewCoroutine(f func(c *Coroutine)) *Coroutine {
+func NewCoroutine(f func(c Coroutine)) Coroutine {
 	next, _ := iter.Pull(func(yield func(struct{}) bool) {
-		c := _acquire_coroutine()
-		c.yield = yield
-		c.next = nil
+		c := Coroutine{
+			next:  nil,
+			yield: yield,
+		}
 		f(c)
-		c.Release()
 	})
 
-	c := _acquire_coroutine()
-	c.next = next
-	c.yield = nil
+	c := Coroutine{
+		next:  next,
+		yield: nil,
+	}
 	return c
 }
